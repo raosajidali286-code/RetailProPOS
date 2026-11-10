@@ -14,12 +14,16 @@ jobs:
 
       - name: Find and extract project ZIP
         run: |
-          ZIP_FILE=$(find . -name "RetailPro_Android_Project.zip" -print -quit)
+          ZIP_FILE=$(find . -type f -name 'RetailPro_Android_Project*.zip' -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
             echo "Project ZIP not found!"
+            echo "Available ZIP files:"
+            find . -type f -name '*.zip'
             exit 1
           fi
+
+          echo "Found ZIP: $ZIP_FILE"
 
           mkdir -p project
           unzip -q "$ZIP_FILE" -d project
@@ -35,6 +39,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
+
           sudo apt-get install -y \
             git zip unzip openjdk-17-jdk \
             build-essential autoconf libtool \
@@ -53,6 +58,7 @@ jobs:
             exit 1
           fi
 
+          echo "Buildozer spec found: $SPEC"
           echo "SPEC_DIR=$(dirname "$SPEC")" >> "$GITHUB_ENV"
 
       - name: Build APK
@@ -64,8 +70,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: RetailPro-Android-APK
-          path: |
-            ${{ env.SPEC_DIR }}/bin/*.apk
+          path: ${{ env.SPEC_DIR }}/bin/*.apk
           if-no-files-found: error
           retention-days: 7
           
