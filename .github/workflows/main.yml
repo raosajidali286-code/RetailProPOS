@@ -1,0 +1,71 @@
+
+name: Build RetailPro Android APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and extract project ZIP
+        run: |
+          ZIP_FILE=$(find . -name "RetailPro_Android_Project.zip" -print -quit)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "Project ZIP not found!"
+            exit 1
+          fi
+
+          mkdir -p project
+          unzip -q "$ZIP_FILE" -d project
+
+          echo "ZIP extracted successfully"
+          find project -maxdepth 3 -type f | head -50
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git zip unzip openjdk-17-jdk \
+            build-essential autoconf libtool \
+            pkg-config zlib1g-dev libffi-dev \
+            libssl-dev
+
+          python -m pip install --upgrade pip
+          python -m pip install buildozer cython==0.29.36
+
+      - name: Locate Buildozer project
+        run: |
+          SPEC=$(find project -name buildozer.spec -print -quit)
+
+          if [ -z "$SPEC" ]; then
+            echo "buildozer.spec not found!"
+            exit 1
+          fi
+
+          echo "SPEC_DIR=$(dirname "$SPEC")" >> "$GITHUB_ENV"
+
+      - name: Build APK
+        run: |
+          cd "$SPEC_DIR"
+          buildozer android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RetailPro-Android-APK
+          path: |
+            ${{ env.SPEC_DIR }}/bin/*.apk
+          if-no-files-found: error
+          retention-days: 7
+          
